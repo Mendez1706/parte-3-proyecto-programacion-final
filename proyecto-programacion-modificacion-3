@@ -1,0 +1,169 @@
+from datetime import datetime
+
+
+def registrar_log(mensaje):
+    with open("log.txt", "a") as log:
+        log.write(f"[{datetime.now()}] {mensaje}\n")
+
+def merge_sort(arr):
+    if len(arr) > 1:
+        mid = len(arr) // 2
+        izquierda = arr[:mid]
+        derecha = arr[mid:]
+        merge_sort(izquierda)
+        merge_sort(derecha)
+
+        i = j = k = 0
+        while i < len(izquierda) and j < len(derecha):
+            if izquierda[i] < derecha[j]:
+                arr[k] = izquierda[i]
+                i += 1
+            else:
+                arr[k] = derecha[j]
+                j += 1
+            k += 1
+        while i < len(izquierda):
+            arr[k] = izquierda[i]
+            i += 1
+            k += 1
+        while j < len(derecha):
+            arr[k] = derecha[j]
+            j += 1
+            k += 1
+
+class CajeroAutomatico:
+    def __init__(self):
+        self.usuarios = []  # List
+        self.transacciones = {}  # Di t
+        self.transacciones_globales = []  # List
+        self.accesos = []  # Lis
+        self.operaciones_realizadas = []  # L
+        self.inicializar_datos()
+
+    def inicializar_datos(self):
+        try:
+           
+            with open("usuarios.txt", "r") as archivo:
+                for linea in archivo:
+                    nombre, saldo = linea.strip().split(",")
+                    self.usuarios.append((nombre, float(saldo)))
+        except FileNotFoundError:
+         
+            self.usuarios = [
+                ("Usuario0", 1000),
+                ("Usuario1", 1500),
+                ("Usuario2", 500),
+                ("Usuario3", 3000),
+                ("Usuario4", 2500),
+            ]
+            self.guardar_usuarios()
+
+        
+        for i, (nombre, _) in enumerate(self.usuarios):
+            try:
+                with open(f"transacciones_usuario_{i}.txt", "r") as archivo:
+                    self.transacciones[i] = [float(t.strip()) for t in archivo]
+            except FileNotFoundError:
+                self.transacciones[i] = []
+
+    def guardar_usuarios(self):
+        with open("usuarios.txt", "w") as archivo:
+            for nombre, saldo in self.usuarios:
+                archivo.write(f"{nombre},{saldo}\n")
+
+    def guardar_transacciones(self, usuario_id):
+        with open(f"transacciones_usuario_{usuario_id}.txt", "w") as archivo:
+            for transaccion in self.transacciones[usuario_id]:
+                archivo.write(f"{transaccion}\n")
+
+    def consultar_saldo(self, usuario_id):
+        nombre, saldo = self.usuarios[usuario_id]
+        print(f"Tu saldo actual es: ${saldo}\n")
+        self.operaciones_realizadas.append(f"Usuario {nombre} consultó su saldo.")
+        registrar_log(f"{nombre} consultó su saldo.")
+
+    def depositar_dinero(self, usuario_id):
+        nombre, saldo = self.usuarios[usuario_id]
+        monto = float(input("¿Cuánto deseas depositar?: $"))
+        if monto > 0:
+            self.usuarios[usuario_id] = (nombre, saldo + monto)
+            self.transacciones[usuario_id].append(monto)
+            self.transacciones_globales.append((nombre, monto, "Depósito"))
+            self.guardar_usuarios()
+            self.guardar_transacciones(usuario_id)
+            print(f"Has depositado: ${monto}. Tu nuevo saldo es: ${saldo + monto}\n")
+            self.operaciones_realizadas.append(f"Usuario {nombre} depositó ${monto}.")
+            registrar_log(f"{nombre} depositó ${monto}.")
+        else:
+            print("El monto debe ser mayor a 0.\n")
+
+    def retirar_dinero(self, usuario_id):
+        nombre, saldo = self.usuarios[usuario_id]
+        monto = float(input("¿Cuánto deseas retirar?: $"))
+        if monto > saldo:
+            print("Fondos insuficientes.\n")
+        elif monto > 0:
+            self.usuarios[usuario_id] = (nombre, saldo - monto)
+            self.transacciones[usuario_id].append(-monto)
+            self.transacciones_globales.append((nombre, -monto, "Retiro"))
+            self.guardar_usuarios()
+            self.guardar_transacciones(usuario_id)
+            print(f"Has retirado: ${monto}. Tu nuevo saldo es: ${saldo - monto}\n")
+            self.operaciones_realizadas.append(f"Usuario {nombre} retiró ${monto}.")
+            registrar_log(f"{nombre} retiró ${monto}.")
+        else:
+            print("El monto debe ser mayor a 0.\n")
+
+    def mostrar_transacciones(self, usuario_id):
+        nombre, _ = self.usuarios[usuario_id]
+        transacciones_usuario = self.transacciones[usuario_id]
+        if not transacciones_usuario:
+            print("No hay transacciones para mostrar.\n")
+        else:
+            print("Transacciones antes de ordenar:", transacciones_usuario)
+            merge_sort(transacciones_usuario)
+            print("Transacciones ordenadas (por monto):", transacciones_usuario)
+        self.operaciones_realizadas.append(f"Usuario {nombre} revisó sus transacciones.")
+        registrar_log(f"{nombre} revisó sus transacciones.")
+
+    def ejecutar(self):
+        usuario_id = int(input("Selecciona tu ID de usuario (0 a 4): "))
+        if usuario_id < 0 or usuario_id >= len(self.usuarios):
+            print("ID de usuario no válido.")
+            return
+
+        self.accesos.append((self.usuarios[usuario_id][0], datetime.now()))
+        registrar_log(f"Usuario {self.usuarios[usuario_id][0]} accedió al sistema.")
+
+        while True:
+            print("1. Consultar saldo")
+            print("2. Depositar dinero")
+            print("3. Retirar dinero")
+            print("4. Mostrar transacciones ordenadas")
+            print("5. Mostrar historial de operaciones")
+            print("6. Salir")
+            opcion = input("Elige una opción: ")
+
+            if opcion == "1":
+                self.consultar_saldo(usuario_id)
+            elif opcion == "2":
+                self.depositar_dinero(usuario_id)
+            elif opcion == "3":
+                self.retirar_dinero(usuario_id)
+            elif opcion == "4":
+                self.mostrar_transacciones(usuario_id)
+            elif opcion == "5":
+                print("\nHistorial de operaciones en esta sesión:")
+                for operacion in self.operaciones_realizadas:
+                    print(operacion)
+                print()
+            elif opcion == "6":
+                print("Gracias por usar el cajero. ¡Hasta luego!")
+                registrar_log("El usuario salió del sistema.")
+                break
+            else:
+                print("Opción no válida. Intenta nuevamente.\n")
+
+
+cajero = CajeroAutomatico()
+cajero.ejecutar()
