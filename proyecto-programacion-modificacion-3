@@ -1,6 +1,5 @@
 from datetime import datetime
 
-
 def registrar_log(mensaje):
     with open("log.txt", "a") as log:
         log.write(f"[{datetime.now()}] {mensaje}\n")
@@ -31,100 +30,106 @@ def merge_sort(arr):
             j += 1
             k += 1
 
+class Usuario:
+    def __init__(self, nombre, saldo):
+        self.nombre = nombre
+        self.saldo = saldo
+        self.transacciones = []
+
+    def agregar_transaccion(self, monto):
+        self.transacciones.append(monto)
+
 class CajeroAutomatico:
     def __init__(self):
-        self.usuarios = []  # List
-        self.transacciones = {}  # Di t
-        self.transacciones_globales = []  # List
-        self.accesos = []  # Lis
-        self.operaciones_realizadas = []  # L
+        self.usuarios = []  # List of Usuario objects
+        self.transacciones_globales = []  
+        self.accesos = []  
+        self.operaciones_realizadas = []  
         self.inicializar_datos()
 
     def inicializar_datos(self):
         try:
-           
             with open("usuarios.txt", "r") as archivo:
                 for linea in archivo:
                     nombre, saldo = linea.strip().split(",")
-                    self.usuarios.append((nombre, float(saldo)))
+                    self.usuarios.append(Usuario(nombre, float(saldo)))
         except FileNotFoundError:
-         
+            # Create default users if file is not found
             self.usuarios = [
-                ("Usuario0", 1000),
-                ("Usuario1", 1500),
-                ("Usuario2", 500),
-                ("Usuario3", 3000),
-                ("Usuario4", 2500),
+                Usuario("Usuario0", 1000),
+                Usuario("Usuario1", 1500),
+                Usuario("Usuario2", 500),
+                Usuario("Usuario3", 3000),
+                Usuario("Usuario4", 2500),
             ]
             self.guardar_usuarios()
 
-        
-        for i, (nombre, _) in enumerate(self.usuarios):
+        for i, usuario in enumerate(self.usuarios):
             try:
                 with open(f"transacciones_usuario_{i}.txt", "r") as archivo:
-                    self.transacciones[i] = [float(t.strip()) for t in archivo]
+                    usuario.transacciones = [float(t.strip()) for t in archivo]
             except FileNotFoundError:
-                self.transacciones[i] = []
+                usuario.transacciones = []
 
     def guardar_usuarios(self):
         with open("usuarios.txt", "w") as archivo:
-            for nombre, saldo in self.usuarios:
-                archivo.write(f"{nombre},{saldo}\n")
+            for usuario in self.usuarios:
+                archivo.write(f"{usuario.nombre},{usuario.saldo}\n")
 
     def guardar_transacciones(self, usuario_id):
+        usuario = self.usuarios[usuario_id]
         with open(f"transacciones_usuario_{usuario_id}.txt", "w") as archivo:
-            for transaccion in self.transacciones[usuario_id]:
+            for transaccion in usuario.transacciones:
                 archivo.write(f"{transaccion}\n")
 
     def consultar_saldo(self, usuario_id):
-        nombre, saldo = self.usuarios[usuario_id]
-        print(f"Tu saldo actual es: ${saldo}\n")
-        self.operaciones_realizadas.append(f"Usuario {nombre} consultó su saldo.")
-        registrar_log(f"{nombre} consultó su saldo.")
+        usuario = self.usuarios[usuario_id]
+        print(f"Tu saldo actual es: ${usuario.saldo}\n")
+        self.operaciones_realizadas.append(f"Usuario {usuario.nombre} consultó su saldo.")
+        registrar_log(f"{usuario.nombre} consultó su saldo.")
 
     def depositar_dinero(self, usuario_id):
-        nombre, saldo = self.usuarios[usuario_id]
+        usuario = self.usuarios[usuario_id]
         monto = float(input("¿Cuánto deseas depositar?: $"))
         if monto > 0:
-            self.usuarios[usuario_id] = (nombre, saldo + monto)
-            self.transacciones[usuario_id].append(monto)
-            self.transacciones_globales.append((nombre, monto, "Depósito"))
+            usuario.saldo += monto
+            usuario.agregar_transaccion(monto)
+            self.transacciones_globales.append((usuario.nombre, monto, "Depósito"))
             self.guardar_usuarios()
             self.guardar_transacciones(usuario_id)
-            print(f"Has depositado: ${monto}. Tu nuevo saldo es: ${saldo + monto}\n")
-            self.operaciones_realizadas.append(f"Usuario {nombre} depositó ${monto}.")
-            registrar_log(f"{nombre} depositó ${monto}.")
+            print(f"Has depositado: ${monto}. Tu nuevo saldo es: ${usuario.saldo}\n")
+            self.operaciones_realizadas.append(f"Usuario {usuario.nombre} depositó ${monto}.")
+            registrar_log(f"{usuario.nombre} depositó ${monto}.")
         else:
             print("El monto debe ser mayor a 0.\n")
 
     def retirar_dinero(self, usuario_id):
-        nombre, saldo = self.usuarios[usuario_id]
+        usuario = self.usuarios[usuario_id]
         monto = float(input("¿Cuánto deseas retirar?: $"))
-        if monto > saldo:
+        if monto > usuario.saldo:
             print("Fondos insuficientes.\n")
         elif monto > 0:
-            self.usuarios[usuario_id] = (nombre, saldo - monto)
-            self.transacciones[usuario_id].append(-monto)
-            self.transacciones_globales.append((nombre, -monto, "Retiro"))
+            usuario.saldo -= monto
+            usuario.agregar_transaccion(-monto)
+            self.transacciones_globales.append((usuario.nombre, -monto, "Retiro"))
             self.guardar_usuarios()
             self.guardar_transacciones(usuario_id)
-            print(f"Has retirado: ${monto}. Tu nuevo saldo es: ${saldo - monto}\n")
-            self.operaciones_realizadas.append(f"Usuario {nombre} retiró ${monto}.")
-            registrar_log(f"{nombre} retiró ${monto}.")
+            print(f"Has retirado: ${monto}. Tu nuevo saldo es: ${usuario.saldo}\n")
+            self.operaciones_realizadas.append(f"Usuario {usuario.nombre} retiró ${monto}.")
+            registrar_log(f"{usuario.nombre} retiró ${monto}.")
         else:
             print("El monto debe ser mayor a 0.\n")
 
     def mostrar_transacciones(self, usuario_id):
-        nombre, _ = self.usuarios[usuario_id]
-        transacciones_usuario = self.transacciones[usuario_id]
-        if not transacciones_usuario:
+        usuario = self.usuarios[usuario_id]
+        if not usuario.transacciones:
             print("No hay transacciones para mostrar.\n")
         else:
-            print("Transacciones antes de ordenar:", transacciones_usuario)
-            merge_sort(transacciones_usuario)
-            print("Transacciones ordenadas (por monto):", transacciones_usuario)
-        self.operaciones_realizadas.append(f"Usuario {nombre} revisó sus transacciones.")
-        registrar_log(f"{nombre} revisó sus transacciones.")
+            print("Transacciones antes de ordenar:", usuario.transacciones)
+            merge_sort(usuario.transacciones)
+            print("Transacciones ordenadas (por monto):", usuario.transacciones)
+        self.operaciones_realizadas.append(f"Usuario {usuario.nombre} revisó sus transacciones.")
+        registrar_log(f"{usuario.nombre} revisó sus transacciones.")
 
     def ejecutar(self):
         usuario_id = int(input("Selecciona tu ID de usuario (0 a 4): "))
@@ -132,8 +137,8 @@ class CajeroAutomatico:
             print("ID de usuario no válido.")
             return
 
-        self.accesos.append((self.usuarios[usuario_id][0], datetime.now()))
-        registrar_log(f"Usuario {self.usuarios[usuario_id][0]} accedió al sistema.")
+        self.accesos.append((self.usuarios[usuario_id].nombre, datetime.now()))
+        registrar_log(f"Usuario {self.usuarios[usuario_id].nombre} accedió al sistema.")
 
         while True:
             print("1. Consultar saldo")
@@ -165,5 +170,6 @@ class CajeroAutomatico:
                 print("Opción no válida. Intenta nuevamente.\n")
 
 
+# Run the ATM system
 cajero = CajeroAutomatico()
 cajero.ejecutar()
